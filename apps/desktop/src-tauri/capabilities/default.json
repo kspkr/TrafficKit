@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The main window gets core defaults only; the engine API is plain HTTP, not a Tauri plugin.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

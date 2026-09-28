@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/* Every token is light-dark(light, dark). Which one applies follows
+   color-scheme, which the theme setting controls:
+     no attribute / dark -> dark, light -> light, system -> OS preference. */
+:root {
+  color-scheme: dark;
+
+  --bg: light-dark(#f4f5f7, #0f1114);
+  --panel: light-dark(#ffffff, #14171b);
+  --raised: light-dark(#f0f2f5, #1a1e23);
+  --hover: light-dark(#eceff3, #1f242a);
+  --line: light-dark(#e1e4e9, #242930);
+  --line-strong: light-dark(#cdd2d9, #323940);
+  --text: light-dark(#1c2026, #d9dee4);
+  --muted: light-dark(#59626d, #8b949e);
+  --faint: light-dark(#8a929c, #5c646e);
+  --accent: light-dark(#b46c00, #e5a445);
+  --accent-soft: light-dark(rgb(180 108 0 / 0.1), rgb(229 164 69 / 0.14));
+  --select: light-dark(#e3eefa, #1e2a36);
+  --select-line: light-dark(#5c93c9, #3a6d9a);
+
+  --ok: light-dark(#1f8a4c, #6cc98f);
+  --redirect: light-dark(#2f62c8, #7fa6f5);
+  --client-err: light-dark(#a8710a, #e3b456);
+  --server-err: light-dark(#c53b3b, #ef7a7a);
+
+  --m-get: light-dark(#2f6fd6, #6fa8ff);
+  --m-post: light-dark(#1f8a4c, #6cc98f);
+  --m-put: light-dark(#a8710a, #e3b456);
+  --m-patch: light-dark(#8a47b8, #c792ea);
+  --m-delete: light-dark(#c53b3b, #ef7a7a);
+  --m-other: light-dark(#59626d, #8b949e);
+  --m-connect: light-dark(#1d8579, #74c2b8);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="system"] {
+  color-scheme: light dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-select: var(--select);
+  --color-select-line: var(--select-line);
+  --color-ok: var(--ok);
+  --color-redirect: var(--redirect);
+  --color-client-err: var(--client-err);
+  --color-server-err: var(--server-err);
+
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: 1px solid var(--select-line);
+  outline-offset: -1px;
+}
+
+::selection {
+  background: var(--select-line);
+  color: #fff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
