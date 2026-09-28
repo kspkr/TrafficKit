@@ -55,7 +55,8 @@ persistence, proxy settings not saved between launches.
 
 ## Phase 4: protocols and formats
 
-- WebSocket frame capture and inspector
+- [x] WebSocket message capture and inspector (text, binary, control frames,
+      fragmentation, permessage-deflate), MCP tool
 - HAR import/export
 - OpenAPI 3.x import, endpoint browser, templates
 - Collections

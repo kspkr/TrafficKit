@@ -8,7 +8,7 @@ export const SHORTCUTS = [
   { keys: ['↑', '↓'], alt: ['k', 'j'], action: 'Select previous / next exchange' },
   { keys: ['Home', 'End'], action: 'Jump to first / last exchange' },
   { keys: ['Esc'], action: 'Clear filter focus, then selection' },
-  { keys: ['1', '2', '3', '4'], action: 'Inspector: Overview, Request, Response, Timing' },
+  { keys: ['1', '2', '3', '4', '5'], action: 'Inspector: Overview, Request, Response, Timing, Messages' },
   { keys: ['Delete'], action: 'Delete the selected exchange' },
   { keys: [isMac ? '⌘ ⇧ K' : 'Ctrl Shift K'], action: 'Clear all traffic' },
   { keys: [isMac ? '⌘ ⇧ P' : 'Ctrl Shift P'], action: 'Start or stop the proxy' },

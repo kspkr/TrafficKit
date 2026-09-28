@@ -19,10 +19,17 @@ import (
 
 // sink records every snapshot and signals when an exchange finishes.
 type sink struct {
-	mu     sync.Mutex
-	id     uint64
-	states map[uint64][]traffic.State
-	done   chan traffic.Exchange
+	mu       sync.Mutex
+	id       uint64
+	states   map[uint64][]traffic.State
+	done     chan traffic.Exchange
+	messages []traffic.WSMessage
+}
+
+func (s *sink) Message(id uint64, m traffic.WSMessage) {
+	s.mu.Lock()
+	s.messages = append(s.messages, m)
+	s.mu.Unlock()
 }
 
 func newSink() *sink {

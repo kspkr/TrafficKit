@@ -107,6 +107,16 @@ Response headers:
 - `X-TK-Decoded: gzip` encoding that was removed
 - `X-TK-Decode-Error: ...` decoding failed; raw bytes returned instead
 
+### `GET /v1/exchanges/{id}/messages?after=&limit=&dir=&q=`
+
+WebSocket messages for an upgraded exchange, oldest first. `after` is a
+sequence number, `limit` 1 to 5000 (default 500), `dir` is `send` or
+`receive`, `q` matches payload text. Response:
+`{"items":[Message],"more":bool,"total":n,"dropped":n}` where each message is
+`{seq, time, dir, type, size, compressed, truncated, note, closeCode}` plus
+the payload as `text` (UTF-8) or `base64`. The last 5000 messages per
+connection are kept; `dropped` counts older ones.
+
 ### `DELETE /v1/exchanges/{id}` / `DELETE /v1/exchanges`
 
 Delete one / all. 204. Emits `removed` / `cleared`.

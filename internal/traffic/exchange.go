@@ -122,6 +122,8 @@ type Exchange struct {
 	Response *Response `json:"response,omitempty"`
 	Timings  Timings   `json:"timings"`
 	Error    *Failure  `json:"error,omitempty"`
+	// WebSocket is set on exchanges that upgraded to a WebSocket.
+	WebSocket *WSStats `json:"websocket,omitempty"`
 }
 
 // Clone returns a copy that can be stored while the original keeps changing.
@@ -135,6 +137,10 @@ func (x *Exchange) Clone() Exchange {
 	if x.Error != nil {
 		e := *x.Error
 		c.Error = &e
+	}
+	if x.WebSocket != nil {
+		w := *x.WebSocket
+		c.WebSocket = &w
 	}
 	return c
 }
@@ -158,6 +164,8 @@ type Summary struct {
 	RespSize    int64     `json:"respSize"`
 	Duration    float64   `json:"duration"`
 	Error       string    `json:"error,omitempty"`
+	WebSocket   bool      `json:"websocket,omitempty"`
+	Messages    int       `json:"messages,omitempty"`
 }
 
 func (x *Exchange) Summary() Summary {
@@ -188,6 +196,10 @@ func (x *Exchange) Summary() Summary {
 	}
 	if x.Error != nil {
 		s.Error = x.Error.Code
+	}
+	if x.WebSocket != nil {
+		s.WebSocket = true
+		s.Messages = x.WebSocket.Messages
 	}
 	return s
 }

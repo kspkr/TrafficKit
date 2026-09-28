@@ -63,6 +63,7 @@ func New(eng *engine.Engine, opts Options) *Server {
 	mux.HandleFunc("GET /v1/exchanges/{id}", s.getExchange)
 	mux.HandleFunc("DELETE /v1/exchanges/{id}", s.deleteExchange)
 	mux.HandleFunc("GET /v1/exchanges/{id}/body/{side}", s.getBody)
+	mux.HandleFunc("GET /v1/exchanges/{id}/messages", s.getMessages)
 	mux.HandleFunc("GET /v1/https", s.getHTTPS)
 	mux.HandleFunc("POST /v1/https", s.setHTTPS)
 	mux.HandleFunc("GET /v1/https/ca.pem", s.getCACert)

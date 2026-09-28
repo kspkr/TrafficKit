@@ -31,6 +31,7 @@ function haystack(row) {
       row.contentType ?? '',
       row.error ?? '',
       row.kind === 'tunnel' ? 'tunnel' : '',
+      row.websocket ? 'websocket' : '',
     ]
       .join(' ')
       .toLowerCase()

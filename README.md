@@ -30,6 +30,7 @@ No account, no cloud, no paid tier.
 | **One click interception** | Launch Chrome, Edge, Brave, Chromium or Vivaldi in an isolated window that is already routed through TrafficKit, HTTPS included. Or open a terminal where curl, Node, Python and git go through it automatically. |
 | **Real HTTPS decryption** | A certificate authority generated on your machine. It is never added to your system trust store; only the windows TrafficKit opens trust it. |
 | **Live inspector** | Headers, query, cookies, bodies and timings as they happen. Bodies are decoded (gzip, brotli, zstd) and JSON is formatted with line numbers. |
+| **WebSocket inspector** | Every message in both directions, decoded live, including compressed frames. Filter by direction, search payloads, and read JSON messages formatted. |
 | **Built for big sessions** | A virtualized table stays smooth with tens of thousands of requests. Filter with plain words, sort any column, move with the keyboard. |
 | **AI assistants over MCP** | Claude, Cursor and any MCP client can list, search and inspect your traffic and open intercepted browsers. Passwords, cookies and tokens are redacted before anything leaves your machine. |
 | **Clear errors** | DNS failures, refused connections, timeouts and certificate problems come with a plain explanation and a suggested fix. |
@@ -80,7 +81,7 @@ claude mcp add traffickit -- /path/to/traffickit mcp
 
 > Which calls to api.stripe.com errored in the last few minutes, and what did they return?
 
-The assistant can list, search and inspect traffic, wait for a specific request, open and close browsers, and route its own commands through the proxy. The app shows when an assistant is connected. [Tools, redaction and privacy details](docs/user-guide/mcp.md)
+The assistant can list, search and inspect traffic, read WebSocket messages, wait for a specific request, open and close browsers, and route its own commands through the proxy. The app shows when an assistant is connected. [Tools, redaction and privacy details](docs/user-guide/mcp.md)
 
 ## How it works
 

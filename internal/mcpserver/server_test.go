@@ -19,6 +19,7 @@ import (
 	"github.com/traffickit/traffickit/internal/config"
 	"github.com/traffickit/traffickit/internal/discovery"
 	"github.com/traffickit/traffickit/internal/engine"
+	"github.com/traffickit/traffickit/internal/traffic"
 )
 
 type env struct {
@@ -155,7 +156,7 @@ func TestToolsAreListed(t *testing.T) {
 	for _, tool := range res.Tools {
 		names = append(names, tool.Name)
 	}
-	for _, want := range []string{"get_status", "list_traffic", "get_exchange", "search_traffic", "wait_for_request", "launch_browser", "close_source", "proxy_settings", "clear_traffic"} {
+	for _, want := range []string{"get_status", "list_traffic", "get_exchange", "search_traffic", "get_websocket_messages", "wait_for_request", "launch_browser", "close_source", "proxy_settings", "clear_traffic"} {
 		if !strings.Contains(strings.Join(names, " "), want) {
 			t.Errorf("tool %s missing from %v", want, names)
 		}
@@ -288,5 +289,36 @@ func TestNotRunning(t *testing.T) {
 	}
 	if !res.IsError || !strings.Contains(text(res), "isn't running") {
 		t.Fatalf("got %s", text(res))
+	}
+}
+
+func TestWebSocketMessages(t *testing.T) {
+	e := setup(t, true)
+	st := e.eng.Store()
+	id := st.NextID()
+	x := traffic.Exchange{ID: id, Kind: traffic.KindHTTP, State: traffic.StateStreaming, Upgraded: true,
+		Request:   traffic.Request{Method: "GET", Scheme: "http", Host: "chat.test", Path: "/ws"},
+		WebSocket: &traffic.WSStats{Messages: 3}}
+	e.eng.Record(x)
+	st.AppendMessage(id, traffic.WSMessage{Dir: "send", Type: "text", Data: []byte(`{"op":"auth","token":"sekrit-token"}`)})
+	st.AppendMessage(id, traffic.WSMessage{Dir: "receive", Type: "text", Data: []byte(`{"op":"ready"}`)})
+	st.AppendMessage(id, traffic.WSMessage{Dir: "receive", Type: "binary", Data: []byte{0, 1, 2}})
+
+	var out messagesOut
+	res := e.call(t, "get_websocket_messages", map[string]any{"id": id}, &out)
+	if strings.Contains(text(res), "sekrit-token") {
+		t.Fatal("token in a WebSocket message reached the assistant")
+	}
+	if len(out.Messages) != 3 || out.Messages[1].Text != `{"op":"ready"}` || !out.Messages[2].Binary {
+		t.Fatalf("messages = %+v", out.Messages)
+	}
+	e.call(t, "get_websocket_messages", map[string]any{"id": id, "direction": "receive", "contains": "ready"}, &out)
+	if len(out.Messages) != 1 || out.Messages[0].Seq != 2 {
+		t.Fatalf("filtered = %+v", out.Messages)
+	}
+	var list listOut
+	e.call(t, "list_traffic", map[string]any{"filter": "websocket"}, &list)
+	if len(list.Exchanges) != 1 || !strings.HasPrefix(list.Exchanges[0].Type, "websocket") {
+		t.Fatalf("list = %+v", list.Exchanges)
 	}
 }

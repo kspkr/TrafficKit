@@ -16,14 +16,15 @@ import { decodeText, looksLikeText } from '../../lib/body.js'
 import { AlertIcon, CopyIcon, LockIcon, TrashIcon } from '../icons.jsx'
 import { Button, IconButton, SubTabs, Tabs, useCopy } from '../ui.jsx'
 import { BodyView, useBody } from './BodyView.jsx'
+import { MessagesView } from './MessagesView.jsx'
 import { TimingView } from './TimingView.jsx'
 import { Empty, KeyValueTable, SetCookieTable } from './tables.jsx'
 
-export const INSPECTOR_TABS = ['overview', 'request', 'response', 'timing']
+export const INSPECTOR_TABS = ['overview', 'request', 'response', 'timing', 'messages']
 
 export function Inspector({ id }) {
   const summary = useTraffic((s) => s.rows.get(id))
-  const tab = useApp((s) => s.inspectorTab)
+  const chosenTab = useApp((s) => s.inspectorTab)
   const setTab = useApp((s) => s.setInspectorTab)
 
   // Keyed by revision so an in-flight exchange refreshes as it progresses.
@@ -37,6 +38,8 @@ export function Inspector({ id }) {
   const x = q.data
 
   if (!summary) return null
+  // Messages only exists for WebSocket connections.
+  const tab = chosenTab === 'messages' && !summary.websocket ? 'overview' : chosenTab
   return (
     <section className="flex h-full min-h-0 flex-col bg-panel" aria-label="Exchange inspector">
       <Header summary={summary} />
@@ -48,24 +51,31 @@ export function Inspector({ id }) {
           { id: 'request', label: 'Request' },
           { id: 'response', label: 'Response' },
           { id: 'timing', label: 'Timing' },
+          ...(summary.websocket ? [{ id: 'messages', label: 'Messages', badge: summary.messages ?? 0 }] : []),
         ]}
       />
-      <div className="min-h-0 flex-1 overflow-auto" key={id}>
-        {q.error ? (
-          <Empty>Couldn't load this exchange: {q.error.message}</Empty>
-        ) : !x ? (
-          <Empty>Loading…</Empty>
-        ) : (
-          <>
-            {x.error && <FailureNotice exchange={x} />}
-            {x.kind === 'tunnel' && !x.error && <TunnelNotice exchange={x} />}
-            {tab === 'overview' && <Overview x={x} />}
-            {tab === 'request' && <RequestPane x={x} />}
-            {tab === 'response' && <ResponsePane x={x} />}
-            {tab === 'timing' && <TimingView exchange={x} />}
-          </>
-        )}
-      </div>
+      {tab === 'messages' ? (
+        <div className="min-h-0 flex-1" key={id}>
+          <MessagesView exchangeId={id} count={summary.messages ?? 0} />
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-auto" key={id}>
+          {q.error ? (
+            <Empty>Couldn't load this exchange: {q.error.message}</Empty>
+          ) : !x ? (
+            <Empty>Loading…</Empty>
+          ) : (
+            <>
+              {x.error && <FailureNotice exchange={x} />}
+              {x.kind === 'tunnel' && !x.error && <TunnelNotice exchange={x} />}
+              {tab === 'overview' && <Overview x={x} />}
+              {tab === 'request' && <RequestPane x={x} />}
+              {tab === 'response' && <ResponsePane x={x} />}
+              {tab === 'timing' && <TimingView exchange={x} />}
+            </>
+          )}
+        </div>
+      )}
     </section>
   )
 }

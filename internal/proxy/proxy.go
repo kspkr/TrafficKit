@@ -28,6 +28,8 @@ import (
 type Sink interface {
 	NextID() uint64
 	Record(traffic.Exchange)
+	// Message adds a WebSocket message to exchange id.
+	Message(id uint64, m traffic.WSMessage)
 }
 
 type Options struct {
@@ -413,7 +415,20 @@ func (p *Proxy) relayUpgrade(w http.ResponseWriter, resp *http.Response, x *traf
 		return
 	}
 
-	up, down := pipe(client, brw.Reader, backend)
+	var upObs, downObs io.Writer
+	var rec *wsRecorder
+	if strings.EqualFold(resp.Header.Get("Upgrade"), "websocket") {
+		params := parseDeflate(resp.Header)
+		x.WebSocket = &traffic.WSStats{Compressed: params.enabled}
+		rec = &wsRecorder{p: p, id: x.ID, x: x}
+		send, receive := rec.decoders(params, max(p.maxBody, 64<<10))
+		upObs, downObs = send, receive
+		p.sink.Record(x.Clone())
+	}
+	up, down := pipe(client, brw.Reader, backend, upObs, downObs)
+	if rec != nil {
+		rec.close()
+	}
 	x.Request.Body.Size = up
 	x.Response.Body.Size = down
 	x.Timings.Total = ms(time.Since(start))
@@ -505,7 +520,7 @@ func (p *Proxy) passthrough(w http.ResponseWriter, r *http.Request, target strin
 	x.Response = &traffic.Response{Status: 200, StatusText: "Connection Established", Proto: "HTTP/1.1", Headers: []traffic.Header{}}
 	p.sink.Record(x.Clone())
 
-	up, down := pipe(client, brw.Reader, upstream)
+	up, down := pipe(client, brw.Reader, upstream, nil, nil)
 	x.Request.Body.Size = up
 	x.Response.Body.Size = down
 	x.Timings.Total = ms(time.Since(start))
@@ -520,11 +535,19 @@ const halfCloseGrace = 30 * time.Second
 
 // pipe copies between client and upstream in both directions until both are
 // done, then closes them. clientBuf holds anything the HTTP server read past
-// the request headers and must be drained first.
-func pipe(client net.Conn, clientBuf *bufio.Reader, upstream io.ReadWriteCloser) (up, down int64) {
+// the request headers and must be drained first. The observers, if set, see
+// a copy of each direction's bytes.
+func pipe(client net.Conn, clientBuf *bufio.Reader, upstream io.ReadWriteCloser, upObs, downObs io.Writer) (up, down int64) {
 	var src io.Reader = client
 	if clientBuf != nil {
 		src = clientBuf
+	}
+	var fromUpstream io.Reader = upstream
+	if upObs != nil {
+		src = io.TeeReader(src, upObs)
+	}
+	if downObs != nil {
+		fromUpstream = io.TeeReader(upstream, downObs)
 	}
 	done := make(chan struct{}, 2)
 	go func() {
@@ -533,7 +556,7 @@ func pipe(client net.Conn, clientBuf *bufio.Reader, upstream io.ReadWriteCloser)
 		done <- struct{}{}
 	}()
 	go func() {
-		down, _ = io.Copy(client, upstream)
+		down, _ = io.Copy(client, fromUpstream)
 		closeWrite(client)
 		done <- struct{}{}
 	}()

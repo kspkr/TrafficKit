@@ -47,6 +47,13 @@ Switch to **Traffic** and click an exchange (or use ↑/↓):
 Bodies are decoded (gzip, br, deflate, zstd). JSON is pretty-printed; switch
 to Text or Hex above the body.
 
+WebSocket connections show up as `websocket` in the Type column with a
+running message count. Their **Messages** tab lists every message as it
+happens: arrows mark sent and received, you can filter by direction or search
+payloads, and clicking a message shows it in full. Compressed WebSockets
+(`permessage-deflate`, which browsers use by default) are decompressed for
+you.
+
 Press `/` to filter. Every word must match somewhere in method, host, path,
 status or content type; prefix a word with `-` to exclude it, e.g.
 `api -404`. All shortcuts are listed in **Settings**.

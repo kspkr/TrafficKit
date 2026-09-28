@@ -125,6 +125,12 @@ func (e *Engine) Record(x traffic.Exchange) {
 	}
 }
 
+// Message implements proxy.Sink. The exchange's message count, carried on
+// its summary, is what tells clients there's something new to fetch.
+func (e *Engine) Message(id uint64, m traffic.WSMessage) {
+	e.store.AppendMessage(id, m)
+}
+
 func (e *Engine) Delete(id uint64) bool {
 	if !e.store.Delete(id) {
 		return false

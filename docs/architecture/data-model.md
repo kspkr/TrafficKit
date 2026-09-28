@@ -13,11 +13,12 @@ Exchange {
   state: "pending" | "streaming" | "complete" | "failed"
   started: RFC 3339 timestamp
   client: string        // client address as seen by the proxy
-  upgraded: bool        // 101 Switching Protocols; bytes relayed, not decoded
+  upgraded: bool        // 101 Switching Protocols
   request: Request
   response?: Response   // absent until response headers arrive
   timings: Timings
   error?: Failure
+  websocket?: {messages, sent, received, compressed, closeCode, closeReason}
 }
 
 Request {

@@ -21,6 +21,8 @@ type Store struct {
 	// individually, and is emptied as they finish.
 	floor   uint64
 	dropped map[uint64]struct{}
+
+	msgs map[uint64]*messageLog // WebSocket messages by exchange
 }
 
 func NewStore(limit int) *Store {
@@ -74,6 +76,7 @@ func (s *Store) Put(x Exchange) (sum Summary, evicted []uint64, ok bool) {
 		id := s.order[0]
 		s.order = s.order[1:]
 		delete(s.byID, id)
+		delete(s.msgs, id)
 		s.floor = max(s.floor, id)
 		evicted = append(evicted, id)
 	}
@@ -119,6 +122,7 @@ func (s *Store) Delete(id uint64) bool {
 		s.dropped[id] = struct{}{}
 	}
 	delete(s.byID, id)
+	delete(s.msgs, id)
 	i := sort.Search(len(s.order), func(i int) bool { return s.order[i] >= id })
 	s.order = append(s.order[:i], s.order[i+1:]...)
 	return true
@@ -128,6 +132,7 @@ func (s *Store) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.byID = make(map[uint64]*Exchange)
+	s.msgs = nil
 	s.order = nil
 	s.floor = s.nextID
 	clear(s.dropped)

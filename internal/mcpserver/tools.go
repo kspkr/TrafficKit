@@ -48,6 +48,11 @@ func (t *tools) register(s *mcp.Server) {
 		Annotations: readOnly,
 	}, t.getExchange)
 	mcp.AddTool(s, &mcp.Tool{
+		Name:        "get_websocket_messages",
+		Description: "Messages sent and received on a WebSocket connection (an exchange whose type is websocket), oldest first. Filter by direction or text; page with after_seq.",
+		Annotations: readOnly,
+	}, t.getMessages)
+	mcp.AddTool(s, &mcp.Tool{
 		Name:        "search_traffic",
 		Description: "Find exchanges whose URL, headers or bodies contain some text, newest first, with a snippet around each match.",
 		Annotations: readOnly,
@@ -125,6 +130,9 @@ func item(r *redactor, s traffic.Summary) trafficItem {
 	}
 	if s.State == traffic.StatePending || s.State == traffic.StateStreaming {
 		it.State = "in progress"
+	}
+	if s.WebSocket {
+		it.Type = fmt.Sprintf("websocket, %d messages", s.Messages)
 	}
 	return it
 }
@@ -414,6 +422,102 @@ func (t *tools) getExchange(ctx context.Context, req *mcp.CallToolRequest, in ge
 		if !in.SkipBodies && !out.Tunnel {
 			out.Response.Body = t.body(ctx, r, x.ID, "response", x.Response.Body, headerValue(x.Response.Headers, "Content-Type"), maxChars)
 		}
+	}
+	out.Redacted = r.Hidden()
+	return nil, out, nil
+}
+
+// get_websocket_messages
+
+type messagesIn struct {
+	ID        uint64 `json:"id" jsonschema:"Exchange id of the WebSocket connection"`
+	Direction string `json:"direction,omitempty" jsonschema:"send (client to server) or receive; both by default"`
+	Contains  string `json:"contains,omitempty" jsonschema:"Only messages whose payload contains this text"`
+	AfterSeq  int    `json:"after_seq,omitempty" jsonschema:"Only messages after this sequence number"`
+	Limit     int    `json:"limit,omitempty" jsonschema:"1-500 (default 50)"`
+	MaxChars  int    `json:"max_chars,omitempty" jsonschema:"Characters of each payload to include, up to 20000 (default 2000)"`
+}
+
+type wsMessageOut struct {
+	Seq       int    `json:"seq"`
+	Time      string `json:"time"`
+	Direction string `json:"direction"`
+	Type      string `json:"type"`
+	SizeBytes int64  `json:"size_bytes"`
+	Text      string `json:"text,omitempty"`
+	Binary    bool   `json:"binary,omitempty"`
+	CloseCode int    `json:"close_code,omitempty"`
+	Truncated bool   `json:"truncated,omitempty"`
+	Note      string `json:"note,omitempty"`
+}
+
+type messagesOut struct {
+	Messages []wsMessageOut `json:"messages"`
+	More     bool           `json:"more"`
+	Total    int            `json:"total_kept"`
+	Dropped  int            `json:"older_dropped,omitempty"`
+	Redacted []string       `json:"redacted,omitempty"`
+}
+
+func (t *tools) getMessages(ctx context.Context, req *mcp.CallToolRequest, in messagesIn) (*mcp.CallToolResult, messagesOut, error) {
+	t.identify(req)
+	if in.Direction != "" && in.Direction != "send" && in.Direction != "receive" {
+		return nil, messagesOut{}, errors.New(`direction must be "send" or "receive"`)
+	}
+	limit := in.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	maxChars := in.MaxChars
+	if maxChars <= 0 {
+		maxChars = 2000
+	}
+	maxChars = min(maxChars, 20_000)
+	v := url.Values{"limit": {strconv.Itoa(min(limit, 500))}, "after": {strconv.Itoa(max(in.AfterSeq, 0))}}
+	if in.Direction != "" {
+		v.Set("dir", in.Direction)
+	}
+	if in.Contains != "" {
+		v.Set("q", in.Contains)
+	}
+	var res struct {
+		Items []struct {
+			Seq       int       `json:"seq"`
+			Time      time.Time `json:"time"`
+			Dir       string    `json:"dir"`
+			Type      string    `json:"type"`
+			Size      int64     `json:"size"`
+			Truncated bool      `json:"truncated"`
+			Note      string    `json:"note"`
+			CloseCode int       `json:"closeCode"`
+			Text      *string   `json:"text"`
+			Base64    string    `json:"base64"`
+		} `json:"items"`
+		More    bool `json:"more"`
+		Total   int  `json:"total"`
+		Dropped int  `json:"dropped"`
+	}
+	if err := t.c.json(ctx, "GET", fmt.Sprintf("/v1/exchanges/%d/messages?%s", in.ID, v.Encode()), nil, &res); err != nil {
+		return nil, messagesOut{}, err
+	}
+	r := newRedactor(t.redact)
+	out := messagesOut{Messages: make([]wsMessageOut, 0, len(res.Items)), More: res.More, Total: res.Total, Dropped: res.Dropped}
+	for _, m := range res.Items {
+		o := wsMessageOut{
+			Seq: m.Seq, Time: m.Time.Local().Format("15:04:05.000"), Direction: m.Dir, Type: m.Type,
+			SizeBytes: m.Size, CloseCode: m.CloseCode, Truncated: m.Truncated, Note: m.Note,
+		}
+		if m.Text != nil {
+			text := r.Body("", *m.Text)
+			if utf8.RuneCountInString(text) > maxChars {
+				text = string([]rune(text)[:maxChars])
+				o.Truncated = true
+			}
+			o.Text = text
+		} else if m.Base64 != "" {
+			o.Binary = true
+		}
+		out.Messages = append(out.Messages, o)
 	}
 	out.Redacted = r.Hidden()
 	return nil, out, nil

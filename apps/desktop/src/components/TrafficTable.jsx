@@ -18,6 +18,7 @@ const STATUS_COLOR = {
 
 function typeLabel(row) {
   if (row.kind === 'tunnel') return 'encrypted'
+  if (row.websocket) return `websocket · ${row.messages ?? 0}`
   if (row.upgraded) return 'upgraded'
   const t = row.contentType ?? ''
   return t.replace(/^application\/|^text\//, '').replace(/^x-/, '')

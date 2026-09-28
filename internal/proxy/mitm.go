@@ -62,11 +62,17 @@ func (p *Proxy) interceptConnect(w http.ResponseWriter, r *http.Request, target 
 		return
 	}
 	if first[0] != 0x16 {
+		// Browsers tunnel plain ws:// through CONNECT too. If it looks like
+		// HTTP, capture it like any other request; otherwise relay it.
+		if first[0] >= 'A' && first[0] <= 'Z' {
+			p.serveTunneled(&bufferedConn{Conn: client, r: brw.Reader}, r, target, "http")
+			return
+		}
 		p.relayRaw(client, brw.Reader, r, target, start)
 		return
 	}
 
-	host, port, _ := net.SplitHostPort(target)
+	host, _, _ := net.SplitHostPort(target)
 	tlsConn := tls.Server(&bufferedConn{Conn: client, r: brw.Reader}, &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		NextProtos: []string{"http/1.1"},
@@ -91,13 +97,20 @@ func (p *Proxy) interceptConnect(w http.ResponseWriter, r *http.Request, target 
 	}
 	tlsConn.SetDeadline(time.Time{})
 
+	p.serveTunneled(tlsConn, r, target, "https")
+}
+
+// serveTunneled serves the requests a client sends inside a CONNECT tunnel
+// (decrypted, or plain HTTP) as ordinary proxied requests to target.
+func (p *Proxy) serveTunneled(conn net.Conn, r *http.Request, target, scheme string) {
+	host, port, _ := net.SplitHostPort(target)
 	authority := target
-	if port == "443" {
+	if (scheme == "https" && port == "443") || (scheme == "http" && port == "80") {
 		authority = host
 	}
 	srv := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			req.URL.Scheme = "https"
+			req.URL.Scheme = scheme
 			req.URL.Host = authority
 			req.RemoteAddr = r.RemoteAddr
 			p.forward(w, req)
@@ -106,7 +119,7 @@ func (p *Proxy) interceptConnect(w http.ResponseWriter, r *http.Request, target 
 		IdleTimeout:       2 * time.Minute,
 		ErrorLog:          log.New(io.Discard, "", 0),
 	}
-	srv.Serve(newSingleConnListener(tlsConn))
+	srv.Serve(newSingleConnListener(conn))
 }
 
 // relayRaw splices a CONNECT whose payload isn't TLS straight through.
@@ -130,7 +143,7 @@ func (p *Proxy) relayRaw(client net.Conn, buf *bufio.Reader, r *http.Request, ta
 	x.Timings.Connect = ms(time.Since(start))
 	x.Response = &traffic.Response{Status: 200, StatusText: "Connection Established", Proto: "HTTP/1.1", Headers: []traffic.Header{}}
 	p.sink.Record(x.Clone())
-	up, down := pipe(client, buf, upstream)
+	up, down := pipe(client, buf, upstream, nil, nil)
 	x.Request.Body.Size = up
 	x.Response.Body.Size = down
 	x.Timings.Total = ms(time.Since(start))

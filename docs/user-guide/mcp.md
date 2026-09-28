@@ -38,6 +38,7 @@ shows **AI connected: <assistant>** while it's in use.
 | `list_traffic` | Newest-first list, filterable by host, method, status, failures or free text |
 | `get_exchange` | Headers, decoded bodies, timings and errors for one exchange |
 | `search_traffic` | Find text in URLs, headers and bodies |
+| `get_websocket_messages` | Messages on a WebSocket connection, filterable by direction and text |
 | `wait_for_request` | Wait for a matching request, e.g. while you click through a page |
 | `launch_browser` | Open an isolated, intercepted browser window at a URL |
 | `close_source` | Close a window TrafficKit opened |

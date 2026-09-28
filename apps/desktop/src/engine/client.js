@@ -110,6 +110,12 @@ export const engine = {
   listExchanges: (after = 0, limit = 5000, signal) =>
     sendJSON(`/v1/exchanges?after=${after}&limit=${limit}`, { signal }),
   exchange: (id, signal) => sendJSON(`/v1/exchanges/${id}`, { signal }),
+  messages(id, { after = 0, limit = 500, dir, q } = {}, signal) {
+    const p = new URLSearchParams({ after: String(after), limit: String(limit) })
+    if (dir) p.set('dir', dir)
+    if (q) p.set('q', q)
+    return sendJSON(`/v1/exchanges/${id}/messages?${p}`, { signal })
+  },
   deleteExchange: (id) => sendJSON(`/v1/exchanges/${id}`, { method: 'DELETE' }),
   clearExchanges: () => sendJSON('/v1/exchanges', { method: 'DELETE' }),
 

@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bufio"
 	"crypto/tls"
 	"crypto/x509"
 	"io"
@@ -170,5 +171,40 @@ func TestAbandonedHandshakeIsNotReported(t *testing.T) {
 	case x := <-h.sink.done:
 		t.Fatalf("abandoned connection recorded: %+v", x.Error)
 	case <-time.After(300 * time.Millisecond):
+	}
+}
+
+// Browsers send plain ws:// and http:// through CONNECT as well; those
+// requests should be captured, not just relayed.
+func TestPlainHTTPInsideTunnelIsCaptured(t *testing.T) {
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, "plain inside tunnel")
+	}))
+	defer origin.Close()
+	h := startMITM(t, origin, nil)
+	target := strings.TrimPrefix(origin.URL, "http://")
+
+	conn, err := net.Dial("tcp", h.addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	io.WriteString(conn, "CONNECT "+target+" HTTP/1.1\r\nHost: "+target+"\r\n\r\n")
+	br := bufio.NewReader(conn)
+	if resp, err := http.ReadResponse(br, nil); err != nil || resp.StatusCode != 200 {
+		t.Fatalf("CONNECT: %v %v", resp, err)
+	}
+	io.WriteString(conn, "GET /inside HTTP/1.1\r\nHost: "+target+"\r\n\r\n")
+	resp, err := http.ReadResponse(br, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "plain inside tunnel" {
+		t.Fatalf("body = %q", body)
+	}
+	x := h.sink.wait(t)
+	if x.Kind != traffic.KindHTTP || x.Request.Scheme != "http" || x.Request.Path != "/inside" {
+		t.Fatalf("exchange = %s %s %s", x.Kind, x.Request.Scheme, x.Request.Path)
 	}
 }

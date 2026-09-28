@@ -54,6 +54,9 @@ func haystack(s *Summary) string {
 	if s.Kind == KindTunnel {
 		b.WriteString(" tunnel")
 	}
+	if s.WebSocket {
+		b.WriteString(" websocket")
+	}
 	return strings.ToLower(b.String())
 }
 
